@@ -220,7 +220,16 @@ def load_stock(engine: Engine, df: pd.DataFrame):
                             schema.dim_block.c.name == block_name
                         )
                     ).fetchone()
-                    block_cache[block_name] = result[0] if result else None
+                    if result:
+                        block_cache[block_name] = result[0]
+                    else:
+                        # Auto-create block from stock data
+                        block_cache[block_name] = _get_or_create_block(
+                            conn,
+                            {"Block Name": block_name, "Hectares": 0,
+                             "Block Number": 0, "Variety": ""},
+                            phase_id,
+                        )
                 block_id = block_cache[block_name]
 
             product_name = row["Product Name"]

@@ -12,10 +12,21 @@ import pandas as pd
 _ENGINE = None
 
 
-def get_engine(db_url: str = "sqlite:///data/agriview.db"):
+def _default_db_url() -> str:
+    """Get DB URL from Streamlit secrets, env var, or fallback to SQLite."""
+    try:
+        import streamlit as st
+        return st.secrets["database"]["url"]
+    except Exception:
+        pass
+    import os
+    return os.environ.get("DATABASE_URL", "sqlite:///data/agriview.db")
+
+
+def get_engine(db_url: str | None = None):
     global _ENGINE
     if _ENGINE is None:
-        _ENGINE = create_engine(db_url)
+        _ENGINE = create_engine(db_url or _default_db_url())
     return _ENGINE
 
 
@@ -445,3 +456,58 @@ def cost_per_kg(date_from, date_to, phase: str | None = None) -> pd.DataFrame:
     sql += " GROUP BY b.name, b.hectares, b.variety, p.name, costs.total_cost"
     sql += " ORDER BY cost_per_kg"
     return _query(sql, params)
+
+
+# ── Anomaly Detection queries ────────────────────────────────────────
+
+def detect_fuel_anomalies(date_from, date_to) -> pd.DataFrame:
+    """Flag vehicles with litres/hour >20% above fleet average."""
+    df = fuel_by_vehicle(date_from, date_to)
+    tractors = df[
+        (df["vehicle_type"] == "tractor") &
+        (df["litres_per_hour"] > 0)
+    ].copy()
+    if tractors.empty:
+        return pd.DataFrame()
+    avg = tractors["litres_per_hour"].mean()
+    flagged = tractors[tractors["litres_per_hour"] > avg * 1.2].copy()
+    flagged["avg_litres_per_hour"] = avg
+    flagged["pct_above"] = (
+        (flagged["litres_per_hour"] - avg) / avg * 100
+    )
+    return flagged
+
+
+def detect_stock_gaps(date_from, date_to) -> pd.DataFrame:
+    """Flag products where >50% of purchased value is unused."""
+    df = stock_purchase_vs_usage(date_from, date_to)
+    if df.empty:
+        return pd.DataFrame()
+    df = df[df["purchase_value"] > 0].copy()
+    df["usage_pct"] = df["usage_value"] / df["purchase_value"] * 100
+    df["gap_value"] = df["purchase_value"] - df["usage_value"]
+    flagged = df[df["usage_pct"] < 50].copy()
+    return flagged.sort_values("gap_value", ascending=False)
+
+
+def detect_block_cost_outliers(date_from, date_to) -> pd.DataFrame:
+    """Flag blocks with cost/ha >25% above average."""
+    df = cost_per_hectare(date_from, date_to)
+    if df.empty:
+        return pd.DataFrame()
+    avg = df["cost_per_ha"].mean()
+    flagged = df[df["cost_per_ha"] > avg * 1.25].copy()
+    flagged["avg_cost_per_ha"] = avg
+    flagged["pct_above"] = (
+        (flagged["cost_per_ha"] - avg) / avg * 100
+    )
+    return flagged
+
+
+def detect_all_anomalies(date_from, date_to) -> dict:
+    """Run all anomaly checks, return dict of results."""
+    return {
+        "fuel": detect_fuel_anomalies(date_from, date_to),
+        "stock": detect_stock_gaps(date_from, date_to),
+        "blocks": detect_block_cost_outliers(date_from, date_to),
+    }

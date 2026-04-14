@@ -8,7 +8,48 @@ st.set_page_config(
     layout="wide",
 )
 
-# Navigation
+
+# ── Authentication ────────────────────────────────────────────────────
+
+def check_password():
+    """Simple password gate. Set the password in .streamlit/secrets.toml
+    or Streamlit Cloud secrets as:
+        [auth]
+        password = "your-password-here"
+    """
+    if "authenticated" not in st.session_state:
+        st.session_state.authenticated = False
+
+    if st.session_state.authenticated:
+        return True
+
+    st.title("AgriView")
+    st.caption("Farm cost analytics — authorised access only.")
+
+    password = st.text_input("Password", type="password")
+    if st.button("Login", use_container_width=True):
+        try:
+            correct = st.secrets["auth"]["password"]
+        except (KeyError, FileNotFoundError):
+            # Fallback: no secrets configured, use env var or default
+            import os
+            correct = os.environ.get("AGRIVIEW_PASSWORD", "agriview2026")
+
+        if password == correct:
+            st.session_state.authenticated = True
+            st.rerun()
+        else:
+            st.error("Incorrect password.")
+
+    return False
+
+
+if not check_password():
+    st.stop()
+
+
+# ── Navigation ────────────────────────────────────────────────────────
+
 pages = {
     "Eagle View": "eagle",
     "Block Drill-Down": "block",
