@@ -19,17 +19,42 @@ from datetime import datetime
 
 # All question keys in display order — used for Sheet column headers
 QUESTION_KEYS = [
-    "farm_name", "your_role", "farm_size_hectares", "num_blocks", "block_names",
-    "equipment_list", "fuel_types", "fuel_types_other", "fuel_source",
-    "bowser_details", "fuel_budget", "fuel_theft_concern", "hour_meters",
-    "fuel_tracking_method", "fuel_tracking_other", "who_captures_fuel",
-    "capture_frequency", "google_forms_list", "farmtrace_usage", "data_history",
-    "activity_tracking", "yield_per_block",
-    "monday_numbers", "losing_money", "longest_report", "better_data_decisions",
-    "time_for_system", "other_data_people", "internet_quality", "device",
-    "compliance", "compliance_details",
-    "anything_else", "who_else_to_talk_to",
-    "_submitted", "_last_updated",
+    "farm_name",
+    "your_role",
+    "farm_size_hectares",
+    "num_blocks",
+    "block_names",
+    "equipment_list",
+    "fuel_types",
+    "fuel_types_other",
+    "fuel_source",
+    "bowser_details",
+    "fuel_budget",
+    "fuel_theft_concern",
+    "hour_meters",
+    "fuel_tracking_method",
+    "fuel_tracking_other",
+    "who_captures_fuel",
+    "capture_frequency",
+    "google_forms_list",
+    "farmtrace_usage",
+    "data_history",
+    "activity_tracking",
+    "yield_per_block",
+    "monday_numbers",
+    "losing_money",
+    "longest_report",
+    "better_data_decisions",
+    "time_for_system",
+    "other_data_people",
+    "internet_quality",
+    "device",
+    "compliance",
+    "compliance_details",
+    "anything_else",
+    "who_else_to_talk_to",
+    "_submitted",
+    "_last_updated",
 ]
 
 
@@ -51,7 +76,8 @@ def _get_worksheet():
         "https://www.googleapis.com/auth/drive",
     ]
     creds = Credentials.from_service_account_info(
-        st.secrets["gcp_service_account"], scopes=scopes,
+        st.secrets["gcp_service_account"],
+        scopes=scopes,
     )
     client = gspread.authorize(creds)
     sheet = client.open_by_key(st.secrets["spreadsheet_id"])
@@ -104,11 +130,7 @@ def load_responses() -> dict:
                 values = []
             # Pad values to match headers length
             values.extend([""] * (len(headers) - len(values)))
-            return {
-                h: _deserialize(v, h)
-                for h, v in zip(headers, values)
-                if h in QUESTION_KEYS
-            }
+            return {h: _deserialize(v, h) for h, v in zip(headers, values) if h in QUESTION_KEYS}
         except Exception as e:
             st.warning(f"Could not load from Google Sheets: {e}")
             return {}
@@ -140,6 +162,7 @@ def save_responses(responses: dict):
 
 # ── Helper ─────────────────────────────────────────────────────────────
 
+
 def get(saved: dict, key: str, default=""):
     """Get a saved response or return the default."""
     val = saved.get(key, default)
@@ -158,6 +181,7 @@ def radio_index(options: list, saved_value: str, default: str) -> int:
 
 
 # ── Main app ───────────────────────────────────────────────────────────
+
 
 def main():
     st.set_page_config(
@@ -224,10 +248,7 @@ def main():
 
     st.header("2. Equipment & Fuel")
 
-    st.markdown(
-        "I need to understand every piece of equipment that uses fuel "
-        "on the farm."
-    )
+    st.markdown("I need to understand every piece of equipment that uses fuel " "on the farm.")
 
     responses["equipment_list"] = st.text_area(
         "List all equipment that uses fuel (tractors, bakkies, trucks, "
@@ -245,7 +266,11 @@ def main():
     )
 
     fuel_type_options = [
-        "Diesel", "Petrol (Unleaded)", "Petrol (Leaded)", "LPG", "Other",
+        "Diesel",
+        "Petrol (Unleaded)",
+        "Petrol (Leaded)",
+        "LPG",
+        "Other",
     ]
     responses["fuel_types"] = st.multiselect(
         "What fuel types are used on the farm?",
@@ -268,9 +293,9 @@ def main():
     responses["fuel_source"] = st.radio(
         "Where does the fuel come from?",
         options=fuel_source_options,
-        index=radio_index(fuel_source_options,
-                          get(saved, "fuel_source"),
-                          "Bulk delivery to a farm tank/bowser"),
+        index=radio_index(
+            fuel_source_options, get(saved, "fuel_source"), "Bulk delivery to a farm tank/bowser"
+        ),
     )
 
     responses["bowser_details"] = st.text_area(
@@ -300,8 +325,7 @@ def main():
     responses["fuel_theft_concern"] = st.radio(
         "Has fuel theft or unexplained fuel loss ever been a concern?",
         options=theft_options,
-        index=radio_index(theft_options,
-                          get(saved, "fuel_theft_concern"), "Not sure"),
+        index=radio_index(theft_options, get(saved, "fuel_theft_concern"), "Not sure"),
     )
 
     hour_meter_options = [
@@ -314,8 +338,7 @@ def main():
     responses["hour_meters"] = st.radio(
         "Do any of the tractors/machines have hour meters that get recorded?",
         options=hour_meter_options,
-        index=radio_index(hour_meter_options,
-                          get(saved, "hour_meters"), "Not sure"),
+        index=radio_index(hour_meter_options, get(saved, "hour_meters"), "Not sure"),
     )
 
     # ── Section 3: How Data Gets Captured ──────────────────────────────
@@ -359,9 +382,9 @@ def main():
     responses["capture_frequency"] = st.radio(
         "How often does fuel data get captured?",
         options=freq_options,
-        index=radio_index(freq_options,
-                          get(saved, "capture_frequency"),
-                          "Every single fill-up (real-time)"),
+        index=radio_index(
+            freq_options, get(saved, "capture_frequency"), "Every single fill-up (real-time)"
+        ),
     )
 
     responses["google_forms_list"] = st.text_area(
@@ -380,8 +403,7 @@ def main():
     )
 
     responses["farmtrace_usage"] = st.text_area(
-        "What do you use FarmTrace for? What data goes in there "
-        "vs what goes in Google Forms?",
+        "What do you use FarmTrace for? What data goes in there " "vs what goes in Google Forms?",
         value=get(saved, "farmtrace_usage"),
         placeholder=(
             "e.g. FarmTrace is mainly for spray records and compliance. "
@@ -402,8 +424,7 @@ def main():
         "How far back does your fuel data go? (in any system — forms, "
         "FarmTrace, spreadsheets, logbooks)",
         options=history_options,
-        index=radio_index(history_options,
-                          get(saved, "data_history"), "Not sure"),
+        index=radio_index(history_options, get(saved, "data_history"), "Not sure"),
     )
 
     # ── Section 4: Activities & Blocks ─────────────────────────────────
@@ -425,8 +446,7 @@ def main():
         "When a tractor works in a specific block (e.g. mowing Block A3), "
         "is that recorded anywhere?",
         options=activity_options,
-        index=radio_index(activity_options,
-                          get(saved, "activity_tracking"), "Not sure"),
+        index=radio_index(activity_options, get(saved, "activity_tracking"), "Not sure"),
     )
 
     yield_options = [
@@ -438,8 +458,7 @@ def main():
     responses["yield_per_block"] = st.radio(
         "Do you track yield (kg harvested) per block?",
         options=yield_options,
-        index=radio_index(yield_options,
-                          get(saved, "yield_per_block"), "Not sure"),
+        index=radio_index(yield_options, get(saved, "yield_per_block"), "Not sure"),
     )
 
     # ── Section 5: What Matters Most ───────────────────────────────────
@@ -452,8 +471,7 @@ def main():
     )
 
     responses["monday_numbers"] = st.text_area(
-        "If I could put 3 numbers in front of you every Monday morning, "
-        "what would they be?",
+        "If I could put 3 numbers in front of you every Monday morning, " "what would they be?",
         value=get(saved, "monday_numbers"),
         placeholder=(
             "e.g.\n"
@@ -513,9 +531,9 @@ def main():
     responses["time_for_system"] = st.radio(
         "How much time per week can you realistically spend on a new system?",
         options=time_options,
-        index=radio_index(time_options,
-                          get(saved, "time_for_system"),
-                          "5-10 minutes to check a dashboard"),
+        index=radio_index(
+            time_options, get(saved, "time_for_system"), "5-10 minutes to check a dashboard"
+        ),
     )
 
     responses["other_data_people"] = st.text_input(
@@ -533,13 +551,19 @@ def main():
     responses["internet_quality"] = st.radio(
         "How's the internet/WiFi on the farm?",
         options=internet_options,
-        index=radio_index(internet_options,
-                          get(saved, "internet_quality"),
-                          "OK — works most of the time, sometimes slow"),
+        index=radio_index(
+            internet_options,
+            get(saved, "internet_quality"),
+            "OK — works most of the time, sometimes slow",
+        ),
     )
 
     device_options = [
-        "Phone (Android)", "Phone (iPhone)", "Tablet", "Laptop", "Desktop PC",
+        "Phone (Android)",
+        "Phone (iPhone)",
+        "Tablet",
+        "Laptop",
+        "Desktop PC",
     ]
     responses["device"] = st.multiselect(
         "What devices do you use day-to-day?",
@@ -552,8 +576,7 @@ def main():
         "Are there any compliance or reporting requirements related to fuel? "
         "(carbon tax, BEE reporting, sustainability certifications, etc.)",
         options=compliance_options,
-        index=radio_index(compliance_options,
-                          get(saved, "compliance"), "Not sure"),
+        index=radio_index(compliance_options, get(saved, "compliance"), "Not sure"),
     )
 
     if responses["compliance"] == "Yes":
