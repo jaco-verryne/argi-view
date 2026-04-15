@@ -89,6 +89,45 @@ def _vehicle_id(name: str) -> str:
     return str(name).strip().replace(" ", "-")[:20]
 
 
+# ── Block Setup / Annual Census ───────────────────────────────────────
+
+def parse_block_setup_real(filepath: Path) -> pd.DataFrame:
+    """Parse real FarmTrace Annual Census export.
+
+    Column mapping:
+        Section Description    → Phase
+        Block Number           → Block Name (and name)
+        Variety                → Variety
+        Area                   → Hectares
+        Tree Count - Harvesting → Plant Count
+        Age                    → Year Planted (converted: 2026 - age)
+    """
+    df = read_file(filepath)
+    df.columns = df.columns.str.strip()
+
+    df = df.rename(columns={
+        "Section Description": "Phase",
+        "Block Number": "Block Name",
+        "Area": "Hectares",
+        "Tree Count - Harvesting": "Plant Count",
+    })
+
+    # Derive block number from position in phase
+    df["Block Number"] = range(1, len(df) + 1)
+
+    # Convert age to year planted
+    season = df.get("Season", pd.Series([2026] * len(df)))
+    df["Year Planted"] = season.iloc[0] - df["Age"].fillna(0).astype(int)
+
+    # Clean up
+    df["Hectares"] = pd.to_numeric(df["Hectares"], errors="coerce").fillna(0)
+    df["Plant Count"] = pd.to_numeric(
+        df["Plant Count"], errors="coerce"
+    ).fillna(0).astype(int)
+
+    return df
+
+
 # ── Fuel Transactions ────────────────────────────────────────────────
 
 def parse_fuel_transactions_real(filepath: Path,

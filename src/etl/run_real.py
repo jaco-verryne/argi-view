@@ -14,11 +14,13 @@ from pathlib import Path
 
 from . import schema
 from .parsers_real import (
+    parse_block_setup_real,
     parse_fuel_transactions_real,
     parse_stock_movements_real,
     parse_labour_real,
 )
 from .loader import (
+    load_block_setup,
     load_fuel,
     load_stock,
     load_labour,
@@ -46,29 +48,38 @@ def run_real(data_dir: Path, db_url: str, fresh: bool = False,
     print("Creating tables (if not exists)...")
     schema.create_all(engine)
 
-    # ── 1. Fuel transactions ──────────────────────────────────────────
+    # ── 1. Block setup / Annual Census (must load first — dimensions) ─
+    census_file = _find_file(data_dir, "Annual*.*")
+    if census_file:
+        print(f"\n[1/4] Block setup: {census_file.name}")
+        df = parse_block_setup_real(census_file)
+        load_block_setup(engine, df)
+    else:
+        print("\n[1/4] Block setup: SKIPPED (no Annual* file found)")
+
+    # ── 2. Fuel transactions ──────────────────────────────────────────
     fuel_file = _find_file(data_dir, "Fuel*.*")
     if fuel_file:
-        print(f"\n[1/3] Fuel: {fuel_file.name}")
+        print(f"\n[2/4] Fuel: {fuel_file.name}")
         print(f"  Diesel price: R{diesel_price}/litre")
         df = parse_fuel_transactions_real(fuel_file, diesel_price)
         load_fuel(engine, df)
     else:
-        print("\n[1/3] Fuel: SKIPPED (no Fuel* file found)")
+        print("\n[2/4] Fuel: SKIPPED (no Fuel* file found)")
 
-    # ── 2. Stock movements ────────────────────────────────────────────
+    # ── 3. Stock movements ────────────────────────────────────────────
     stock_file = _find_file(data_dir, "Stock*.*")
     if stock_file:
-        print(f"\n[2/3] Stock movements: {stock_file.name}")
+        print(f"\n[3/4] Stock movements: {stock_file.name}")
         df = parse_stock_movements_real(stock_file)
         load_stock(engine, df)
     else:
-        print("\n[2/3] Stock movements: SKIPPED (no Stock* file found)")
+        print("\n[3/4] Stock movements: SKIPPED (no Stock* file found)")
 
-    # ── 3. Labour ─────────────────────────────────────────────────────
+    # ── 4. Labour ─────────────────────────────────────────────────────
     labour_file = _find_file(data_dir, "Staff*.*")
     if labour_file:
-        print(f"\n[3/3] Labour: {labour_file.name}")
+        print(f"\n[4/4] Labour: {labour_file.name}")
         if labour_date is None:
             labour_date = date.today()
         print(f"  Note: Labour is a period summary — "
@@ -76,13 +87,9 @@ def run_real(data_dir: Path, db_url: str, fresh: bool = False,
         df = parse_labour_real(labour_file, report_date=labour_date)
         load_labour(engine, df)
     else:
-        print("\n[3/3] Labour: SKIPPED (no Staff* file found)")
+        print("\n[4/4] Labour: SKIPPED (no Staff* file found)")
 
     print("\nETL complete.")
-    print("\nNote: No block setup or harvesting files found.")
-    print("Blocks are created automatically from stock movement data.")
-    print("Ask dad for: block setup export, harvesting export, "
-          "and DAILY labour export.")
 
     return engine
 
